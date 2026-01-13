@@ -1,4 +1,3 @@
-
 export interface Comment {
   id: string;
   author: string;
@@ -17,7 +16,14 @@ export interface Article {
   image: string;
 }
 
+export interface XSSPayload {
+  category: string;
+  label: string;
+  payload: string;
+  description: string;
+}
+
 export enum SecurityMode {
-  VULNERABLE = 'VULNERABLE',
-  SECURE = 'SECURE'
+  VULNERABLE = "VULNERABLE",
+  SECURE = "SECURE",
 }
