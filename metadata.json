@@ -1,0 +1,5 @@
+
+{
+  "name": "SecurePath Blog - XSS Lab",
+  "description": "An educational blog platform designed to demonstrate Cross-Site Scripting (XSS) vulnerabilities and their fixes in a professional, controlled environment."
+}
