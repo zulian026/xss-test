@@ -4,53 +4,99 @@ import { SecurityMode, Article, Comment } from "./types";
 import Navbar from "./components/Navbar";
 import BlogCard from "./components/BlogCard";
 import ArticleDetail from "./components/ArticleDetail";
-import SecurityPanel from "./components/SecurityPanel";
-import DefacementMonitor from "./components/DefacementMonitor";
-import EducationPanel from "./components/EducationPanel";
-import DemoController from "./components/DemoController";
 import SearchBar from "./components/SearchBar";
+import Login from "./components/Login";
+import AttackerDashboard from "./components/AttackerDashboard";
 
 const App: React.FC = () => {
   const [securityMode, setSecurityMode] = useState<SecurityMode>(
     SecurityMode.VULNERABLE,
   );
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
-  const [comments, setComments] = useState<Record<number, Comment[]>>({});
+  const [comments, setComments] = useState<Comment[]>([]);
   const [searchResults, setSearchResults] = useState<Article[]>(BLOG_POSTS);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [user, setUser] = useState<{ username: string } | null>(null);
 
-  // Initialize comments from localStorage or empty
+  // Navigation State
+  const [currentPage, setCurrentPage] = useState<'home' | 'login' | 'attacker'>('home');
+
+  // Check login status and mode on mount
   useEffect(() => {
-    const saved = localStorage.getItem("blog_comments");
-    if (saved) {
-      setComments(JSON.parse(saved));
-    }
+    fetch('/api/user')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Not logged in');
+      })
+      .then(data => setUser(data))
+      .catch(() => setUser(null));
+
+    fetch('/api/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.mode) setSecurityMode(data.mode as SecurityMode);
+      });
   }, []);
 
-  const saveComments = (newComments: Record<number, Comment[]>) => {
-    setComments(newComments);
-    localStorage.setItem("blog_comments", JSON.stringify(newComments));
+  const handleModeChange = (newMode: SecurityMode) => {
+    setSecurityMode(newMode);
+    fetch('/api/mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: newMode })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log("Mode switched to", newMode);
+          if (selectedPostId) {
+            fetch(`/api/comments?postId=${selectedPostId}`)
+              .then(res => res.json())
+              .then(d => setComments(d));
+          }
+        }
+      });
   };
 
-  const handleAddComment = (postId: number, author: string, text: string) => {
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      author,
-      text,
-      date: new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
+  // Fetch comments when post selected
+  useEffect(() => {
+    if (selectedPostId) {
+      fetch(`/api/comments?postId=${selectedPostId}`)
+        .then(res => res.json())
+        .then(data => setComments(data))
+        .catch(err => console.error(err));
+    }
+  }, [selectedPostId]);
 
-    const updated = {
-      ...comments,
-      [postId]: [...(comments[postId] || []), newComment],
-    };
-    saveComments(updated);
+  const handleAddComment = (postId: number, author: string, text: string) => {
+    fetch('/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postId, author, text })
+    })
+      .then(res => res.json())
+      .then(newComment => {
+        setComments(prev => [newComment, ...prev]);
+      })
+      .catch(err => console.error(err));
+  };
+
+  const handleLoginSuccess = () => {
+    // Refresh user state
+    fetch('/api/user')
+      .then(res => res.json())
+      .then(data => {
+        setUser(data);
+        setCurrentPage('home'); // Redirect to home after login
+      });
+  };
+
+  const handleLogout = () => {
+    fetch('/api/logout', { method: 'POST' })
+      .then(() => {
+        setUser(null);
+        alert("Logged out.");
+      });
   };
 
   const handleSearch = (query: string) => {
@@ -78,17 +124,27 @@ const App: React.FC = () => {
     <div className="flex flex-col min-h-screen">
       <Navbar
         securityMode={securityMode}
-        setSecurityMode={setSecurityMode}
-        onHomeClick={() => setSelectedPostId(null)}
+        setSecurityMode={handleModeChange}
+        onHomeClick={() => {
+          setSelectedPostId(null);
+          setCurrentPage('home');
+        }}
+        user={user}
+        onLogin={() => setCurrentPage('login')}
+        onLogout={handleLogout}
       />
 
-      <main className="flex-grow container mx-auto px-4 py-8 lg:flex lg:gap-8">
-        <div className="lg:w-2/3">
-          {selectedPostId ? (
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <div className="w-full max-w-4xl mx-auto">
+          {currentPage === 'attacker' ? (
+            <AttackerDashboard />
+          ) : currentPage === 'login' ? (
+            <Login onLoginSuccess={handleLoginSuccess} />
+          ) : selectedPostId ? (
             <ArticleDetail
               article={selectedPost!}
               securityMode={securityMode}
-              comments={comments[selectedPostId] || []}
+              comments={comments}
               onAddComment={(author, text) =>
                 handleAddComment(selectedPostId, author, text)
               }
@@ -96,7 +152,7 @@ const App: React.FC = () => {
             />
           ) : (
             <>
-              <SearchBar securityMode={securityMode} onSearch={handleSearch} />
+              <SearchBar onSearch={handleSearch} />
 
               {searchQuery && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -148,43 +204,20 @@ const App: React.FC = () => {
             </>
           )}
         </div>
-
-        <aside className="lg:w-1/3 mt-8 lg:mt-0 space-y-6">
-          <SecurityPanel
-            securityMode={securityMode}
-            setSecurityMode={setSecurityMode}
-          />
-
-          <DefacementMonitor
-            securityMode={securityMode}
-            comments={
-              selectedPostId
-                ? comments[selectedPostId] || []
-                : Object.values(comments).flat()
-            }
-          />
-
-          <EducationPanel securityMode={securityMode} />
-
-          <DemoController
-            securityMode={securityMode}
-            onModeChange={setSecurityMode}
-            onAddComment={(author, text) => {
-              if (selectedPostId) {
-                handleAddComment(selectedPostId, author, text);
-              }
-            }}
-            currentPostId={selectedPostId}
-          />
-        </aside>
       </main>
 
       <footer className="bg-white border-t border-gray-200 py-8 mt-auto">
         <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
-          <p>
+          <p className="mb-2">
             &copy; 2024 SecurePath Education. Lab ini hanya untuk tujuan edukasi
             keamanan web.
           </p>
+          <button
+            onClick={() => setCurrentPage(currentPage === 'attacker' ? 'home' : 'attacker')}
+            className="text-xs text-red-300 hover:text-red-500 transition-colors"
+          >
+            [ Attacker Dashboard ]
+          </button>
         </div>
       </footer>
     </div>

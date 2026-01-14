@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Comment, SecurityMode } from "../types";
-import XSSExecutor from "./XSSExecutor";
 
 interface CommentSectionProps {
   postId: number;
@@ -16,24 +15,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
 }) => {
   const [author, setAuthor] = useState("");
   const [commentText, setCommentText] = useState("");
-  const [showDefacementWarning, setShowDefacementWarning] = useState(false);
-
-  // Detect potential defacement payloads
-  useEffect(() => {
-    const defacementKeywords = [
-      "document.body",
-      "document.title",
-      "innerHTML",
-      "style.background",
-      "matrix",
-    ];
-    const hasDefacementPayload = defacementKeywords.some((keyword) =>
-      commentText.toLowerCase().includes(keyword.toLowerCase()),
-    );
-    setShowDefacementWarning(
-      hasDefacementPayload && securityMode === SecurityMode.VULNERABLE,
-    );
-  }, [commentText, securityMode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,13 +24,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     setCommentText("");
   };
 
-  /**
-   * CATATAN EDUKASI:
-   * Dalam React, secara default {} akan meng-escape konten (Mode Aman).
-   * Untuk mensimulasikan kerentanan XSS (innerHTML di vanilla JS),
-   * kita menggunakan properti 'dangerouslySetInnerHTML'.
-   */
-
   return (
     <section id="comments">
       <h3 className="text-2xl font-bold text-gray-900 mb-8 flex items-center gap-2">
@@ -57,36 +31,16 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         Diskusi ({comments.length})
       </h3>
 
-      {/* Defacement Warning */}
-      {showDefacementWarning && (
-        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <i className="fas fa-skull text-red-500 text-lg"></i>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-bold text-red-800">
-                ⚠️ DEFACEMENT PAYLOAD DETECTED
-              </h3>
-              <p className="text-xs text-red-700 mt-1">
-                Payload ini akan mengubah tampilan halaman secara drastis
-                (defacement). Dalam mode vulnerable, halaman akan ter-deface
-                setelah submit.
-              </p>
-              <div className="mt-2 flex gap-2">
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
-                  <i className="fas fa-eye mr-1"></i>
-                  Visual Impact
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                  <i className="fas fa-refresh mr-1"></i>
-                  Refresh to Reset
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="mb-8 text-sm text-gray-500 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <p className="mb-1">
+          <strong>Security Mode:</strong> {securityMode === SecurityMode.VULNERABLE ? <span className="text-red-600 font-bold">VULNERABLE</span> : <span className="text-green-600 font-bold">SAFE</span>}
+        </p>
+        <p>
+          {securityMode === SecurityMode.VULNERABLE
+            ? "Server saves raw input. Client renders HTML directly. (Stored XSS possible)."
+            : "Server sanitizes input. (XSS prevented)."}
+        </p>
+      </div>
 
       <form
         onSubmit={handleSubmit}
@@ -101,7 +55,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            placeholder="Ketik nama anda..."
+            placeholder="John Doe"
           />
         </div>
         <div className="mb-4">
@@ -112,60 +66,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({
             rows={4}
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            className={`w-full px-4 py-2 rounded-lg border transition-all resize-none ${
-              showDefacementWarning
-                ? "border-red-300 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-red-50"
-                : "border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-            }`}
-            placeholder={
-              securityMode === SecurityMode.VULNERABLE
-                ? "Tulis pendapat anda (Atau coba payload XSS/Defacement di sini)..."
-                : "Tulis pendapat anda (Mode aman - XSS akan di-escape)..."
-            }
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
+            placeholder="Write a comment..."
           ></textarea>
-          {showDefacementWarning && (
-            <div className="mt-2 text-xs text-red-600 flex items-center gap-1">
-              <i className="fas fa-exclamation-triangle"></i>
-              Defacement payload terdeteksi - akan mengubah tampilan halaman!
-            </div>
-          )}
         </div>
         <div className="flex items-center justify-between">
           <button
             type="submit"
-            className={`font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 ${
-              showDefacementWarning
-                ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white"
-            }`}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2"
           >
-            {showDefacementWarning ? (
-              <>
-                <i className="fas fa-skull"></i>
-                Execute Defacement
-              </>
-            ) : (
-              <>
-                Kirim Komentar
-                <i className="fas fa-paper-plane text-xs"></i>
-              </>
-            )}
+            Kirim Komentar
+            <i className="fas fa-paper-plane text-xs"></i>
           </button>
-
-          <div className="text-xs text-gray-500">
-            Mode:{" "}
-            <span
-              className={`font-bold ${
-                securityMode === SecurityMode.VULNERABLE
-                  ? "text-red-600"
-                  : "text-green-600"
-              }`}
-            >
-              {securityMode === SecurityMode.VULNERABLE
-                ? "🔓 VULNERABLE"
-                : "🔒 SECURE"}
-            </span>
-          </div>
         </div>
       </form>
 
@@ -175,9 +87,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({
             Belum ada komentar. Jadilah yang pertama berdiskusi!
           </div>
         ) : (
-          comments.map((comment) => (
+          comments.map((comment, index) => (
             <div
-              key={comment.id}
+              key={index} // prefer ID if available, but backend logic sends ID
               className="flex gap-4 p-4 bg-white rounded-xl border border-gray-100 shadow-sm transition-all hover:border-indigo-100"
             >
               <div className="w-12 h-12 rounded-full bg-indigo-50 flex-shrink-0 flex items-center justify-center text-indigo-400">
@@ -189,40 +101,26 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                   <span className="text-xs text-gray-400">{comment.date}</span>
                 </div>
 
-                {/*
-                  IMPLEMENTASI KEAMANAN (CRITICAL):
-                  A. Mode Rentan: Execute JavaScript untuk demonstrasi XSS.
-                  B. Mode Aman: Display sebagai text biasa (React auto-escape).
+                {/* 
+                  REALISTIC XSS IMPLEMENTATION:
+                  
+                  [VULNERABLE MODE]
+                  - We use dangerouslySetInnerHTML. 
+                  - XSS payloads (<script>, <img onerror>, styles) will execute.
+                  
+                  [SAFE MODE]
+                  - We use standard React children rendering: <div>{text}</div>.
+                  - React AUTOMATICALLY escapes content (Output Encoding).
+                  - This is the #1 defense against XSS on the client side.
                 */}
-                <div className="mb-2">
-                  <XSSExecutor
-                    payload={comment.text}
-                    securityMode={securityMode}
-                    onExecuted={() =>
-                      console.log(
-                        `XSS executed from comment by ${comment.author}`,
-                      )
-                    }
+                {securityMode === SecurityMode.VULNERABLE ? (
+                  <div
+                    className="text-gray-700 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: comment.text }}
                   />
-                </div>
-
-                {securityMode === SecurityMode.VULNERABLE && (
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="text-[10px] uppercase font-bold text-red-400 tracking-tighter">
-                      <i className="fas fa-exclamation-triangle mr-1"></i>{" "}
-                      Vulnerable Rendering (innerHTML)
-                    </div>
-                    {comment.text.toLowerCase().includes("document.body") && (
-                      <span className="text-[8px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold">
-                        DEFACEMENT
-                      </span>
-                    )}
-                  </div>
-                )}
-                {securityMode === SecurityMode.SECURE && (
-                  <div className="mt-2 text-[10px] uppercase font-bold text-green-400 tracking-tighter">
-                    <i className="fas fa-check-circle mr-1"></i> Safe Rendering
-                    (Escaped Text)
+                ) : (
+                  <div className="text-gray-700 prose prose-sm max-w-none">
+                    {comment.text}
                   </div>
                 )}
               </div>
